@@ -1,9 +1,7 @@
 import telegram
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-import requests
+from telegram.ext import Updater, CommandHandler, MessageHandler, filters
 import yt_dlp
 
-# Bot token yahan dalen
 BOT_TOKEN = "8565663576:AAFnaC-qxL2WC0ELRk8wJhDS_86BJm23gwM"
 
 def start(update, context):
@@ -14,22 +12,31 @@ def handle_video_link(update, context):
     
     try:
         # Video download logic
-        with yt_dlp.YoutubeDL() as ydl:
+        ydl_opts = {
+            'outtmpl': 'downloads/%(title)s.%(ext)s',
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=True)
             video_file = ydl.prepare_filename(info)
         
         # Video send karein
-        context.bot.send_video(chat_id=update.effective_chat.id, video=open(video_file, 'rb'))
+        with open(video_file, 'rb') as video:
+            context.bot.send_video(
+                chat_id=update.effective_chat.id, 
+                video=video,
+                caption=f"Downloaded: {info.get('title', 'Video')}"
+            )
     
     except Exception as e:
         update.message.reply_text(f'Error: {str(e)}')
 
 def main():
-    updater = Updater(BOT_TOKEN, use_context=True)
+    updater = Updater(BOT_TOKEN)
     dp = updater.dispatcher
     
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_video_link))
+    dp.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_video_link))
     
     updater.start_polling()
     updater.idle()
